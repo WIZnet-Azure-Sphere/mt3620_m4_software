@@ -135,6 +135,10 @@ void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 {
     struct mtk_spi_transfer xfer;
     int ret;
+    uint8_t data[3];
+    uint8_t temp[4];
+    uint16_t addr;
+    uint32_t sent_byte = 0;
 
 #ifdef USE_VDM
     AddrSel |= (_W5500_SPI_READ_ | _W5500_SPI_VDM_OP_);
@@ -153,33 +157,48 @@ void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
     xfer.opcode = 0x5a;
     xfer.opcode_len = 3;
 
-    uint8_t data[3];
-    uint8_t temp[4];
-    uint16_t addr;
-    uint32_t sent_byte = 0;
+#define RBUF_SIZE_TEST 16
 
-    addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
-    data[0] = (addr >> 8) & 0xff;
-    data[1] = (addr >> 0) & 0xff;
-    data[2] = AddrSel & 0xff;
+    do
+    {
+        addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
+        data[0] = (addr >> 8) & 0xff;
+        data[1] = (addr >> 0) & 0xff;
+        data[2] = AddrSel & 0xff;
 
-    xfer.opcode = (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff;
+        xfer.opcode = (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff;
 #ifdef DEBUG_WIZCHIP_READ_BUF
-    printf("xfer.opcode = #%x\r\n", (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff);
-    printf("xfer.opcode = #%x\r\n", xfer.opcode);
+        printf("xfer.opcode = #%x\r\n", (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff);
+        printf("xfer.opcode = #%x\r\n", xfer.opcode);
 #endif
-    xfer.opcode_len = 3;
+        xfer.opcode_len = 3;
 
 #ifdef DEBUG_WIZCHIP_READ_BUF
-    printf("len = %d\r\n", len);
+        printf("len = %d\r\n", len);
 #endif
+        if (len >= RBUF_SIZE_TEST)
+        {
+            xfer.len = RBUF_SIZE_TEST;
+            len -= RBUF_SIZE_TEST;
+        }
+        else
+        {
+            xfer.len = len;
+            len = 0;
+        }
 
-    ret = mtk_os_hal_spim_transfer((spim_num)spi_master_port_num,
-        &spi_default_config, &xfer);
-    if (ret) {
-        printf("mtk_os_hal_spim_transfer failed\n");
-        return ret;
-    }
+        xfer.rx_buf = pBuf + sent_byte;
+
+        ret = mtk_os_hal_spim_transfer((spim_num)spi_master_port_num,
+            &spi_default_config, &xfer);
+        if (ret) {
+            printf("mtk_os_hal_spim_transfer failed\n");
+            return ret;
+        }
+
+        sent_byte += RBUF_SIZE_TEST;
+        
+    } while (len != 0);
 
 #ifdef DEBUG_WIZCHIP_READ_BUF
     for (int i = 0; i < 3; i++)
@@ -192,123 +211,16 @@ void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
     }
     printf("\r\n");
 #endif
-
-#if 0
-    uint16_t i;
-
-    #ifdef USE_VDM
-    AddrSel |= (_W5500_SPI_READ_ | _W5500_SPI_VDM_OP_);
-    #else
-    AddrSel |= (_W5500_SPI_READ_ | _W5500_SPI_FDM_OP_LEN1_);
-    #endif
-
-#ifdef USE_VDM
-    uint8_t data[3];
-    uint16_t addr;
-    uint32_t sent_byte = 0;
-
-#define RBUF_SIZE_TEST 16
-    do
-    {
-        addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
-        data[0] = (addr >> 8) & 0xff;
-        data[1] = (addr >> 0) & 0xff;
-        data[2] = AddrSel & 0xff;
-
-
-        if (len >= RBUF_SIZE_TEST)
-        {
-            if (SPIMaster_WriteThenReadSync(driver, data, sizeof(data), pBuf + sent_byte, RBUF_SIZE_TEST) != ERROR_NONE)
-            {
-                UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback.\r\n");
-                return;
-            }
-            len -= RBUF_SIZE_TEST;
-            sent_byte += RBUF_SIZE_TEST;
-        }
-        else
-        {
-            if (SPIMaster_WriteThenReadSync(driver, data, sizeof(data), pBuf + sent_byte, len) != ERROR_NONE)
-            {
-                UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback.\r\n");
-                return;
-            }
-            len = 0;
-        }
-    } while (len != 0);
-
-#else
-#if 1
-    uint8_t data[3];
-    uint16_t addr;
-
-    for (i = 0; i < len; i++)
-    {
-        addr = ((AddrSel >> 8) + i) & 0xFFFF;
-        data[0] = (addr >> 8) & 0xff;
-        data[1] = (addr >> 0) & 0xff;
-        data[2] = AddrSel & 0xff;
-
-        if (SPIMaster_WriteThenReadSync(driver, data, sizeof(data), pBuf + i, 1) != ERROR_NONE)
-        {
-            UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback.\r\n");
-            return;
-        }
-    }
-    
-#else
-    for (i = 0; i < len; i++)
-    {
-        uint8_t data[] = {(AddrSel & 0x00FF0000) >> 16, ((AddrSel & 0x0000FF00) >> 8) + i, (AddrSel & 0x000000FF) >> 0 };
-
-        if (SPIMaster_WriteThenReadSync(driver, data, sizeof(data), pBuf+i, 1) != ERROR_NONE)
-        {
-            UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback.\r\n");
-            return;
-        }
-        // AddrSel += 1;
-    }
-#endif
-#endif
-
-    // uint8_t data[len + 3];
-    // memset(data, 0, len+3);
-
-    // data[0] = (AddrSel & 0x00FF0000) >> 16;
-    // data[1] = (AddrSel & 0x0000FF00) >> 8;
-    // data[2] = (AddrSel & 0x000000FF) >> 0;
-
-    // // if (SPIMaster_WriteThenReadSync(driver, data, len+3, pBuf, len) != ERROR_NONE)
-    // // {
-    // //     UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback.\r\n");
-    // //     return;
-    // // }
-    // if (SPIMaster_WriteSync(driver, data, 3) != ERROR_NONE)
-    // {
-    //     UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback.\r\n");
-    //     return;
-    // }
-
-    // if (SPIMaster_ReadSync(driver, data, len) != ERROR_NONE)
-    // {
-    //     UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback.\r\n");
-    //     return;
-    // }
-
-    // memcpy(pBuf, data, len);
-
-    // UART_Printf(debug, "SPI RX buf: ");
-    // for(i=0; i<len; i++)
-    // {
-    //     UART_Printf(debug, "%02x ", pBuf[i]);
-    // }
-#endif
 }
 
 void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t *pBuf, uint16_t len)
 {
     struct mtk_spi_transfer xfer;
     int ret;
+    uint8_t data[3];
+    uint8_t temp[4];
+    uint16_t addr;
+    uint32_t sent_byte = 0;
 
 #ifdef USE_VDM
     AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_VDM_OP_);
@@ -326,33 +238,48 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t *pBuf, uint16_t len)
     xfer.opcode = 0x5a;
     xfer.opcode_len = 3;
 
-    uint8_t data[3];
-    uint8_t temp[4];
-    uint16_t addr;
-    uint32_t sent_byte = 0;
+#define WBUF_SIZE_TEST 16
 
-    addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
-    data[0] = (addr >> 8) & 0xff;
-    data[1] = (addr >> 0) & 0xff;
-    data[2] = AddrSel & 0xff;
+    do
+    {
+        addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
+        data[0] = (addr >> 8) & 0xff;
+        data[1] = (addr >> 0) & 0xff;
+        data[2] = AddrSel & 0xff;
 
-    xfer.opcode = (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff;
+        xfer.opcode = (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff;
 #ifdef DEBUG_WIZCHIP_WRITE_BUF
-    printf("xfer.opcode = #%x\r\n", (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff);
-    printf("xfer.opcode = #%x\r\n", xfer.opcode);
+        printf("xfer.opcode = #%x\r\n", (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff);
+        printf("xfer.opcode = #%x\r\n", xfer.opcode);
 #endif
-    xfer.opcode_len = 3;
+        xfer.opcode_len = 3;
 
 #ifdef DEBUG_WIZCHIP_WRITE_BUF
-    printf("len = %d\r\n", len);
+        printf("len = %d\r\n", len);
 #endif
+        if (len >= WBUF_SIZE_TEST)
+        {
+            xfer.len = WBUF_SIZE_TEST;
+            len -= WBUF_SIZE_TEST;
+        }
+        else
+        {
+            xfer.len = len;
+            len = 0;
+        }
 
-    ret = mtk_os_hal_spim_transfer((spim_num)spi_master_port_num,
-        &spi_default_config, &xfer);
-    if (ret) {
-        printf("mtk_os_hal_spim_transfer failed\n");
-        return ret;
-    }
+        xfer.tx_buf = pBuf + sent_byte;
+
+        ret = mtk_os_hal_spim_transfer((spim_num)spi_master_port_num,
+            &spi_default_config, &xfer);
+        if (ret) {
+            printf("mtk_os_hal_spim_transfer failed\n");
+            return ret;
+        }
+
+        sent_byte += WBUF_SIZE_TEST;
+
+    } while (len != 0);
 
 #ifdef DEBUG_WIZCHIP_WRITE_BUF
     for (int i = 0; i < 3; i++)
@@ -364,116 +291,6 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t *pBuf, uint16_t len)
         printf("%#x ", *(pBuf+i));
     }
     printf("\r\n");
-#endif
-
-#if 0
-    uint16_t i;
-
-    #ifdef USE_VDM
-    AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_VDM_OP_);
-    #else
-    AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_FDM_OP_LEN1_);
-    #endif
-
-#ifdef USE_VDM
-    uint8_t data[3+2048];
-    uint8_t temp[4];
-    uint16_t addr;
-    uint32_t sent_byte = 0;
-
-#define WBUF_SIZE_TEST 17
-    do
-    {
-        if (len >= WBUF_SIZE_TEST)
-        {
-            addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
-            data[0] = (addr >> 8) & 0xff;
-            data[1] = (addr >> 0) & 0xff;
-            data[2] = AddrSel & 0xff;
-            memcpy(data + 3, pBuf + sent_byte, WBUF_SIZE_TEST);
-
-            if (SPIMaster_WriteSync(driver, data, 3 + WBUF_SIZE_TEST) != ERROR_NONE)
-            {
-                UART_Print(debug, "ERROR: SPIMaster_WriteSync Failed set select callback. \r\n");
-                return;
-            }
-            
-            len -= WBUF_SIZE_TEST;
-            sent_byte += WBUF_SIZE_TEST;
-        }
-        else
-        {
-            addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
-            data[0] = (addr >> 8) & 0xff;
-            data[1] = (addr >> 0) & 0xff;
-            data[2] = AddrSel & 0xff;
-            memcpy(data + 3, pBuf + sent_byte, len);
-
-            if (SPIMaster_WriteSync(driver, data, 3 + len) != ERROR_NONE)
-            {
-                UART_Printf(debug, "%s %d\r\n", __FILE__, __LINE__);
-                UART_Print(debug, "ERROR: SPIMaster_WriteSync Failed set select callback. \r\n");
-                return;
-            }
-            len = 0;
-        }
-    } while (len != 0);
-#else
-#if 1
-    uint8_t data[4];
-    uint8_t temp[4];
-    uint16_t addr;
-
-    for (i = 0; i < len; i++)
-    {
-        addr = ((AddrSel >> 8) + i) & 0xFFFF;
-        data[0] = (addr >> 8) & 0xff;
-        data[1] = (addr >> 0) & 0xff;
-        data[2] = AddrSel & 0xff;
-        data[3] = pBuf[i];
-
-        if (SPIMaster_WriteSync(driver, data, sizeof(data)) != ERROR_NONE)
-        {
-            UART_Print(debug, "ERROR: SPIMaster_WriteSync Failed set select callback. \r\n");
-            return;
-        }
-    }
-#else
-    for (i = 0; i < len; i++)
-    {
-        uint8_t data[] = { (AddrSel & 0x00FF0000) >> 16, ((AddrSel & 0x0000FF00) >> 8) + i, (AddrSel & 0x000000FF) >> 0, pBuf[i] };
-
-        if (SPIMaster_WriteSync(driver, data, sizeof(data)) != ERROR_NONE)
-        {
-            UART_Print(debug, "ERROR: SPIMaster_WriteSync Failed set select callback. \r\n");
-            return ;
-        }
-
-        // AddrSel += 1;
-    }
-#endif
-#endif
-    // uint8_t data[len+3];
-    // data[0] = (AddrSel & 0x00FF0000) >> 16;
-    // data[1] = (AddrSel & 0x0000FF00) >> 8;
-    // data[2] = (AddrSel & 0x000000FF) >> 0;
-    // for(i=0; i<len; i++)
-    // {
-    //     data[3 + i] = pBuf[i];
-    // }
-    // // memcpy(data+3, pBuf, len);
-
-    // UART_Printf(debug, "SPI buf: ");
-    // for(i=0; i<len+3; i++)
-    // {
-    //     UART_Printf(debug, "%02x ", data[i]);
-    // }
-
-    // if (SPIMaster_WriteSync(driver, data, len+3) != ERROR_NONE)
-    // {
-    //     UART_Print(debug, "ERROR: SPIMaster_WriteSync Failed set select callback. \r\n");
-    //     return ;
-    // }
 #endif
 }
 
