@@ -87,10 +87,19 @@ extern UART* debug;
 
 #define USE_VDM
 
+#if 1
+extern uint8_t spi_master_port_num;
+extern uint32_t spi_master_speed;
+extern struct mtk_spi_config spi_default_config;
+#endif
+
 uint8_t WIZCHIP_READ(uint32_t AddrSel)
 {
-#if 0
-    uint8_t ret;
+    struct mtk_spi_transfer xfer;
+    int ret;
+
+#if 1
+    uint8_t rb;
 
     #ifdef USE_VDM
     AddrSel |= (_W5500_SPI_READ_ | _W5500_SPI_VDM_OP_);
@@ -98,38 +107,64 @@ uint8_t WIZCHIP_READ(uint32_t AddrSel)
     AddrSel |= (_W5500_SPI_READ_ | _W5500_SPI_FDM_OP_LEN1_);
     #endif
     
+    xfer.tx_buf = NULL;
+    xfer.rx_buf = &rb;
+    xfer.use_dma = 0;
+    xfer.speed_khz = spi_master_speed;
+    xfer.len = 1;
+    xfer.opcode = 0x5a;
+    xfer.opcode_len = 3;
+
     uint8_t data[] = { (AddrSel & 0x00FF0000) >> 16, (AddrSel & 0x0000FF00) >> 8, (AddrSel & 0x000000FF) >> 0 };
 
-    if (SPIMaster_WriteThenReadSync(driver, data, sizeof(data), &ret, sizeof(ret)) != ERROR_NONE)
-    {
-        UART_Print(debug, "ERROR: SPIMaster_WriteThenReadSync Failed set select callback \r\n");
-        return -1;
+    xfer.opcode = (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff;
+    xfer.opcode_len = 3;
+
+    ret = mtk_os_hal_spim_transfer((spim_num)spi_master_port_num,
+        &spi_default_config, &xfer);
+    if (ret) {
+        printf("mtk_os_hal_spim_transfer failed\n");
+        return ret;
     }
 
-    return ret;
+    return rb;
 #endif
 }
 
 void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t wb)
 {
-#if 0
+    struct mtk_spi_transfer xfer;
+    int ret;
+
+#if 1
     #ifdef USE_VDM
     AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_VDM_OP_);
     #else
     AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_FDM_OP_LEN1_);
     #endif
 
+    xfer.tx_buf = &wb;
+    xfer.rx_buf = NULL;
+    xfer.use_dma = 1;
+    xfer.speed_khz = spi_master_speed;
+    xfer.len = 1;
+    xfer.opcode = 0x5a;
+    xfer.opcode_len = 3;
+
     const uint8_t data[] = { (AddrSel & 0x00FF0000) >> 16, (AddrSel & 0x0000FF00) >> 8, (AddrSel & 0x000000FF) >> 0, wb };
 
-    SPIMaster_WriteSync(driver, data, sizeof(data));
+    xfer.opcode = (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff;
+    xfer.opcode_len = 3;
+
+    ret = mtk_os_hal_spim_transfer((spim_num)spi_master_port_num,
+        &spi_default_config, &xfer);
+    if (ret) {
+        printf("mtk_os_hal_spim_transfer failed\n");
+        return ret;
+    }
+
 #endif
 }
-
-#if 1
-extern uint8_t spi_master_port_num;
-extern uint32_t spi_master_speed;
-extern struct mtk_spi_config spi_default_config;
-#endif
 
 void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 {

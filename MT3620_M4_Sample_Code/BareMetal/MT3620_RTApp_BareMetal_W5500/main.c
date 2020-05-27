@@ -47,8 +47,8 @@
 #include "ioLibrary_Driver/Ethernet/socket.h"
 #include "ioLibrary_Driver/Ethernet/wizchip_conf.h"
 #include "ioLibrary_Driver/Ethernet/W5500/w5500.h"
-//#include "ioLibrary_Driver/Application/loopback/loopback.h"
-//#include "ioLibrary_Driver/Internet/DHCP/dhcps.h"
+#include "ioLibrary_Driver/Application/loopback/loopback.h"
+#include "ioLibrary_Driver/Internet/DHCP/dhcps.h"
 //#include "ioLibrary_Driver/Internet/SNTP/sntps.h"
 
 /******************************************************************************/
@@ -58,7 +58,7 @@
 static const uint8_t uart_port_num = OS_HAL_UART_PORT0;
 
 uint8_t spi_master_port_num = OS_HAL_SPIM_ISU1;
-uint32_t spi_master_speed = 100; /* 100KHz */
+uint32_t spi_master_speed = 40*1000; /* KHz */
 
 #define SPIM_CLOCK_POLARITY SPI_CPOL_0
 #define SPIM_CLOCK_PHASE SPI_CPHA_0
@@ -244,7 +244,7 @@ _Noreturn void RTCoreMain(void)
 
     InitPrivateNetInfo();
 
-#define TEST
+//#define TEST
 #ifdef TEST
     u32 i;
     u8 temp[100];
@@ -269,7 +269,13 @@ _Noreturn void RTCoreMain(void)
 #endif
     //spim_test();
 
-	for (;;)
-		__asm__("wfi");
+    dhcps_init(2, gDATABUF);
+
+    while (1)
+    {
+        dhcps_run();
+
+        loopback_tcps(0, s0_Buf, 50000);
+    }
 }
 
