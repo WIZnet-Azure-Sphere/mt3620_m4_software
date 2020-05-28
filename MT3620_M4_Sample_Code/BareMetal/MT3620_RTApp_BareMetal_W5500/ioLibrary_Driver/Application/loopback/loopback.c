@@ -4,10 +4,6 @@
 #include "../../Ethernet/socket.h"
 #include "../../Ethernet/wizchip_conf.h"
 #include "printf.h"
-#if 0
-// UART Debug
-extern UART* debug;
-#endif
 
 #if LOOPBACK_MODE == LOOPBACK_MAIN_NOBLCOK
 
@@ -31,9 +27,7 @@ int32_t loopback_tcps(uint8_t sn, uint8_t *buf, uint16_t port)
             getSn_DIPR(sn, destip);
             destport = getSn_DPORT(sn);
 
-#if 0
             printf("%d:Connected - %d.%d.%d.%d : %d\r\n", sn, destip[0], destip[1], destip[2], destip[3], destport);
-#endif
 #endif
             setSn_IR(sn, Sn_IR_CON);
         }
@@ -52,10 +46,12 @@ int32_t loopback_tcps(uint8_t sn, uint8_t *buf, uint16_t port)
                 buf[size] = 0;
             }
 #if 0
-#if 1
-            // For AX1 Test
+// Enable print a message of Receiving
+#if 0
+// For AX1 Test
             printf("loopback_tcps() Received data from sn %d: (%d)\r\n", sn, size - sentsize);
 #else
+// Original
             printf("loopback_tcps() Received data from sn %d: (%d) %s\r\n", sn, size - sentsize, buf + sentsize);
 #endif
 #endif
