@@ -11,11 +11,6 @@
 #include "sntps.h"
 #include "../../Ethernet/socket.h"
 
-#if 0
- // UART Debug
-extern UART* debug;
-#endif
-
 ntpsformat NTPsformat;
 datetime Nowdatetime;
 uint8_t ntpsmessage[48];
@@ -299,24 +294,24 @@ int8_t SNTPs_run()
   			if (RSR_len > MAX_SNTP_BUF_SIZE) RSR_len = MAX_SNTP_BUF_SIZE;	// if Rx data size is lager than TX_RX_MAX_BUF_SIZE
             sock_recvfrom(NTPs_SOCKET, data_buf, RSR_len, (uint8_t *)&destip, &destport);
 #if 0
-        UART_Printf(debug, "NTP message : %d.%d.%d.%d(%d) %d received. \r\n", destip[0], destip[1], destip[2], destip[3], destport, RSR_len);
+        printf("NTP message : %d.%d.%d.%d(%d) %d received. \r\n", destip[0], destip[1], destip[2], destip[3], destport, RSR_len);
 #endif
 
         memcpy(&NTPsformat, &data_buf[8], sizeof(NTPsformat));
         #ifdef DEBUG_SNTPS_RUN
-        UART_Printf(debug, "NTPformat.leap %#x\r\n", NTPformat.leapVersionMode);
-        UART_Printf(debug, "NTPformat.version %#x\r\n", NTPformat.leapVersionMode);
-        UART_Printf(debug, "NTPformat.mode %#x\r\n", NTPformat.leapVersionMode);
-        UART_Printf(debug, "NTPformat.stratum %#x\r\n", NTPformat.stratum);
-        UART_Printf(debug, "NTPformat.poll %#x\r\n", NTPformat.poll);
-        UART_Printf(debug, "NTPformat.precision %#x\r\n", NTPformat.precision);
-        UART_Printf(debug, "NTPformat.rootdelay %#x\r\n", NTPformat.rootdelay);
-        UART_Printf(debug, "NTPformat.rootdisp %#x\r\n", NTPformat.rootdisp);
-        UART_Printf(debug, "NTPformat.refid %#x\r\n", NTPformat.refid);
-        UART_Printf(debug, "NTPformat.reftime %#x\r\n", NTPformat.reftime);
-        UART_Printf(debug, "NTPformat.org %#x\r\n", NTPformat.org);
-        UART_Printf(debug, "NTPformat.rec %#x\r\n", NTPformat.rec);
-        UART_Printf(debug, "NTPformat.xmt %#x\r\n", NTPformat.xmt);
+        printf("NTPformat.leap %#x\r\n", NTPformat.leapVersionMode);
+        printf("NTPformat.version %#x\r\n", NTPformat.leapVersionMode);
+        printf("NTPformat.mode %#x\r\n", NTPformat.leapVersionMode);
+        printf("NTPformat.stratum %#x\r\n", NTPformat.stratum);
+        printf("NTPformat.poll %#x\r\n", NTPformat.poll);
+        printf("NTPformat.precision %#x\r\n", NTPformat.precision);
+        printf("NTPformat.rootdelay %#x\r\n", NTPformat.rootdelay);
+        printf("NTPformat.rootdisp %#x\r\n", NTPformat.rootdisp);
+        printf("NTPformat.refid %#x\r\n", NTPformat.refid);
+        printf("NTPformat.reftime %#x\r\n", NTPformat.reftime);
+        printf("NTPformat.org %#x\r\n", NTPformat.org);
+        printf("NTPformat.rec %#x\r\n", NTPformat.rec);
+        printf("NTPformat.xmt %#x\r\n", NTPformat.xmt);
         #endif
 
         swapEndian();

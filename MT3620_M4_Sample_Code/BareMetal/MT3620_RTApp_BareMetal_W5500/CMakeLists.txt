@@ -28,7 +28,7 @@ add_executable(${PROJECT_NAME}
                ioLibrary_Driver/Ethernet/wizchip_conf.c
                ioLibrary_Driver/Ethernet/socket.c
                ioLibrary_Driver/Internet/DHCP/dhcps.c
-               #ioLibrary_Driver/Internet/SNTP/sntps.c
+               ioLibrary_Driver/Internet/SNTP/sntps.c
                ioLibrary_Driver/Application/loopback/loopback.c
                )
 

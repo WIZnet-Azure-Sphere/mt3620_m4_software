@@ -49,7 +49,7 @@
 #include "ioLibrary_Driver/Ethernet/W5500/w5500.h"
 #include "ioLibrary_Driver/Application/loopback/loopback.h"
 #include "ioLibrary_Driver/Internet/DHCP/dhcps.h"
-//#include "ioLibrary_Driver/Internet/SNTP/sntps.h"
+#include "ioLibrary_Driver/Internet/SNTP/sntps.h"
 
 /******************************************************************************/
 /* Configurations */
@@ -59,6 +59,8 @@ static const uint8_t uart_port_num = OS_HAL_UART_PORT0;
 
 uint8_t spi_master_port_num = OS_HAL_SPIM_ISU1;
 uint32_t spi_master_speed = 2*10*1000; /* KHz */
+
+extern uint32_t timestamp;
 
 #define SPIM_CLOCK_POLARITY SPI_CPOL_0
 #define SPIM_CLOCK_PHASE SPI_CPHA_0
@@ -152,6 +154,8 @@ void InitPrivateNetInfo(void) {
 
 _Noreturn void RTCoreMain(void)
 {
+    u32 i = 0;
+    
     /* Init Vector Table */
     NVIC_SetupVectorTable();
 
@@ -169,13 +173,23 @@ _Noreturn void RTCoreMain(void)
     InitPrivateNetInfo();
 
     dhcps_init(2, gDATABUF);
+    SNTPs_init(3, gsntpDATABUF);
 
     while (1)
     {
         dhcps_run();
 
+        SNTPs_run();
+
         loopback_tcps(0, s0_Buf, 50000);
         loopback_tcps(1, s1_Buf, 50001);
+
+        i++;
+        if(i > 10000)
+        {
+          timestamp++;
+          i = 0;
+        }
     }
 }
 
