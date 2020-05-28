@@ -76,12 +76,6 @@
 #define _W5500_SPI_FDM_OP_LEN2_ 0x02
 #define _W5500_SPI_FDM_OP_LEN4_ 0x03
 
-#if 0
-// 20200512
-extern SPIMaster* driver;
-extern UART* debug;
-#endif
-
 #if (_WIZCHIP_ == 5500)
 ////////////////////////////////////////////////////
 
@@ -98,7 +92,6 @@ uint8_t WIZCHIP_READ(uint32_t AddrSel)
     struct mtk_spi_transfer xfer;
     int ret;
 
-#if 1
     uint8_t rb;
 
     #ifdef USE_VDM
@@ -128,7 +121,6 @@ uint8_t WIZCHIP_READ(uint32_t AddrSel)
     }
 
     return rb;
-#endif
 }
 
 void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t wb)
@@ -136,7 +128,6 @@ void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t wb)
     struct mtk_spi_transfer xfer;
     int ret;
 
-#if 1
     #ifdef USE_VDM
     AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_VDM_OP_);
     #else
@@ -145,7 +136,7 @@ void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t wb)
 
     xfer.tx_buf = &wb;
     xfer.rx_buf = NULL;
-    xfer.use_dma = 1;
+    xfer.use_dma = 0;
     xfer.speed_khz = spi_master_speed;
     xfer.len = 1;
     xfer.opcode = 0x5a;
@@ -162,8 +153,6 @@ void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t wb)
         printf("mtk_os_hal_spim_transfer failed\n");
         return ret;
     }
-
-#endif
 }
 
 void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
