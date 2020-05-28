@@ -31,7 +31,12 @@ static ip_addr dhcps_owned_first_ip;
 static ip_addr dhcps_owned_last_ip;
 static uint8_t dhcps_num_of_available_ips;
 #endif
+#define USE_READ_DMA
+#ifdef USE_READ_DMA
+static dhcps_msg* __attribute__((unused, section(".sysram"))) dhcp_message_repository;
+#else
 static dhcps_msg *dhcp_message_repository;
+#endif
 static int dhcp_message_total_options_lenth;
 
 /* allocated IP range */  
@@ -228,6 +233,9 @@ void dhcps_init(uint8_t s, uint8_t * buf)
 
   DHCPs_SOCKET = s; // SOCK_DHCP
   dhcp_message_repository = (dhcps_msg*)buf;
+#ifdef USE_READ_DMA
+  printf("dhcp_message_repository = %#x\r\n", dhcp_message_repository);
+#endif
   DHCPs_XID = 0x12345678;
 
   dhcps_state = 0;

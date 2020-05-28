@@ -668,6 +668,11 @@ int32_t sock_sendto(uint8_t sn, uint8_t *buf, uint16_t len, uint8_t *addr, uint1
    return (int32_t)len;
 }
 
+#define USE_READ_DMA
+#ifdef USE_READ_DMA
+uint8_t __attribute__((unused, section(".sysram"))) head[8];
+#endif
+
 int32_t sock_recvfrom(uint8_t sn, uint8_t *buf, uint16_t len, uint8_t *addr, uint16_t *port)
 {
 //M20150601 : For W5300
@@ -678,7 +683,9 @@ int32_t sock_recvfrom(uint8_t sn, uint8_t *buf, uint16_t len, uint8_t *addr, uin
    uint8_t mr;
 #endif
    //
+#ifndef USE_READ_DMA
    uint8_t head[8];
+#endif
    uint16_t pack_len = 0;
 
     CHECK_SOCKNUM();

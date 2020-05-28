@@ -86,8 +86,10 @@ struct mtk_spi_config spi_default_config = {
     .slave_sel = SPI_SELECT_DEVICE_0,
 #endif
 };
+#if 0
 uint8_t spim_tx_buf[SPIM_FULL_DUPLEX_MAX_LEN];
 uint8_t spim_rx_buf[SPIM_FULL_DUPLEX_MAX_LEN];
+#endif
 static volatile int g_async_done_flag;
 
 // Default Static Network Configuration for TCP Server //
@@ -98,11 +100,23 @@ wiz_NetInfo gWIZNETINFO = { {0x00, 0x08, 0xdc, 0xff, 0xfa, 0xfb},
                            {8, 8, 8, 8},
                            NETINFO_STATIC };
 
+#define USE_READ_DMA
+#ifdef USE_READ_DMA
+#if 1
+extern uint8_t s0_Buf[2048];
+extern uint8_t s1_Buf[2048];
+uint8_t __attribute__((unused, section(".sysram"))) gDATABUF[DATA_BUF_SIZE];
+uint8_t __attribute__((unused, section(".sysram"))) gsntpDATABUF[DATA_BUF_SIZE];
+#else
+uint8_t __attribute__((unused, section(".sysram"))) s0_Buf[2*1024];
+uint8_t __attribute__((unused, section(".sysram"))) s1_Buf[2 * 1024];
+#endif
+#else
 uint8_t s0_Buf[2048];
 uint8_t s1_Buf[2048];
-
 uint8_t gDATABUF[DATA_BUF_SIZE];
 uint8_t gsntpDATABUF[DATA_BUF_SIZE];
+#endif
 
 
 /******************************************************************************/
@@ -171,25 +185,38 @@ _Noreturn void RTCoreMain(void)
     printf("App built on: " __DATE__ " " __TIME__ "\r\n");
 
     InitPrivateNetInfo();
-
+#define TEST_AX1
     dhcps_init(2, gDATABUF);
+#ifndef TEST_AX1
     SNTPs_init(3, gsntpDATABUF);
+#endif
+
+#if 1
+    printf("s0_Buf = %#x\r\n", s0_Buf);
+    printf("s1_Buf = %#x\r\n", s1_Buf);
+    printf("gDATABUF = %#x\r\n", gDATABUF);
+    printf("gsntpDATABUF = %#x\r\n", gsntpDATABUF);
+#endif
 
     while (1)
     {
         dhcps_run();
-
+        
+#ifndef TEST_AX1
         SNTPs_run();
+#endif
 
         loopback_tcps(0, s0_Buf, 50000);
         loopback_tcps(1, s1_Buf, 50001);
 
+#ifndef TEST_AX1
         i++;
         if(i > 10000)
         {
           timestamp++;
           i = 0;
         }
+#endif
     }
 }
 
