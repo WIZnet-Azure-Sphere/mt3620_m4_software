@@ -80,12 +80,12 @@
 ////////////////////////////////////////////////////
 
 #define USE_VDM
+//#define USE_READ_DMA
+//#define USE_WRITE_DMA
 
-#if 1
 extern uint8_t spi_master_port_num;
 extern uint32_t spi_master_speed;
 extern struct mtk_spi_config spi_default_config;
-#endif
 
 uint8_t WIZCHIP_READ(uint32_t AddrSel)
 {
@@ -155,13 +155,8 @@ void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t wb)
     }
 }
 
-#define USE_READ_DMA
 #ifdef USE_READ_DMA
-uint8_t __attribute__((unused, section(".sysram"))) s0_Buf[2 * 1024];
-uint8_t __attribute__((unused, section(".sysram"))) s1_Buf[2 * 1024];
-#endif
-
-void WIZCHIP_READ_BUF_DATA(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
+void WIZCHIP_READ_BUF_DMA(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 {
     struct mtk_spi_transfer xfer;
     int ret;
@@ -180,13 +175,7 @@ void WIZCHIP_READ_BUF_DATA(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 
     xfer.tx_buf = NULL;
     xfer.rx_buf = pBuf;
-#ifdef USE_READ_DMA
     xfer.use_dma = 1;
-    //printf("pBuf = %#x\r\n", pBuf);
-    //printf("spim_rx_buf = %#x\r\n", spim_rx_buf);
-#else
-    xfer.use_dma = 0;
-#endif
     xfer.speed_khz = spi_master_speed;
     xfer.len = len;
     xfer.opcode = 0x5a;
@@ -246,6 +235,7 @@ void WIZCHIP_READ_BUF_DATA(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
     printf("\r\n");
 #endif
 }
+#endif
 
 void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 {
@@ -327,88 +317,6 @@ void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 #endif
 }
 
-
-void WIZCHIP_WRITE_BUF_DATA(uint32_t AddrSel, uint8_t *pBuf, uint16_t len)
-{
-    struct mtk_spi_transfer xfer;
-    int ret;
-    uint8_t data[3];
-    uint8_t temp[4];
-    uint16_t addr;
-    uint32_t sent_byte = 0;
-
-#ifdef USE_VDM
-    AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_VDM_OP_);
-#else
-    AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_FDM_OP_LEN1_);
-#endif
-
-    memset(&xfer, 0, sizeof(xfer));
-
-    xfer.tx_buf = pBuf;
-    xfer.rx_buf = NULL;
-    xfer.use_dma = 1;
-    xfer.speed_khz = spi_master_speed;
-    xfer.len = len;
-    xfer.opcode = 0x5a;
-    xfer.opcode_len = 3;
-
-#define WBUF_SIZE_TEST 16
-
-    do
-    {
-        addr = ((AddrSel >> 8) + sent_byte) & 0xFFFF;
-        data[0] = (addr >> 8) & 0xff;
-        data[1] = (addr >> 0) & 0xff;
-        data[2] = AddrSel & 0xff;
-
-        xfer.opcode = (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff;
-#ifdef DEBUG_WIZCHIP_WRITE_BUF
-        printf("xfer.opcode = #%x\r\n", (u32)(data[2] | data[1] << 8 | data[0] << 16) & 0xffffff);
-        printf("xfer.opcode = #%x\r\n", xfer.opcode);
-#endif
-        xfer.opcode_len = 3;
-
-#ifdef DEBUG_WIZCHIP_WRITE_BUF
-        printf("len = %d\r\n", len);
-#endif
-        if (len >= WBUF_SIZE_TEST)
-        {
-            xfer.len = WBUF_SIZE_TEST;
-            len -= WBUF_SIZE_TEST;
-        }
-        else
-        {
-            xfer.len = len;
-            len = 0;
-        }
-
-        xfer.tx_buf = pBuf + sent_byte;
-
-        ret = mtk_os_hal_spim_transfer((spim_num)spi_master_port_num,
-            &spi_default_config, &xfer);
-        if (ret) {
-            printf("mtk_os_hal_spim_transfer failed\n");
-            return ret;
-        }
-
-        sent_byte += WBUF_SIZE_TEST;
-
-    } while (len != 0);
-
-#ifdef DEBUG_WIZCHIP_WRITE_BUF
-    for (int i = 0; i < 3; i++)
-    {
-        printf("op[%d] %#x ", i, data[i]);
-    }
-    for (int i = 0; i < len; i++)
-    {
-        printf("%#x ", *(pBuf+i));
-    }
-    printf("\r\n");
-#endif
-}
-
 void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t *pBuf, uint16_t len)
 {
     struct mtk_spi_transfer xfer;
@@ -428,7 +336,11 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t *pBuf, uint16_t len)
 
     xfer.tx_buf = pBuf;
     xfer.rx_buf = NULL;
+#ifdef USE_WRITE_DMA
+    xfer.use_dma = 1;
+#else
     xfer.use_dma = 0;
+#endif
     xfer.speed_khz = spi_master_speed;
     xfer.len = len;
     xfer.opcode = 0x5a;
@@ -540,12 +452,8 @@ void wiz_send_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
     //addrsel = (ptr << 8) + (WIZCHIP_TXBUF_BLOCK(sn) << 3);
     addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_TXBUF_BLOCK(sn) << 3);
     //
-    #define USE_BUF_DATA
-    #ifdef USE_BUF_DATA
-    WIZCHIP_WRITE_BUF_DATA(addrsel, wizdata, len);
-    #else
+    
     WIZCHIP_WRITE_BUF(addrsel, wizdata, len);
-    #endif
 
     ptr += len;
     setSn_TX_WR(sn, ptr);
@@ -564,11 +472,13 @@ void wiz_recv_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
     //addrsel = ((ptr << 8) + (WIZCHIP_RXBUF_BLOCK(sn) << 3);
     addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_RXBUF_BLOCK(sn) << 3);
     //
-    #ifdef USE_BUF_DATA
-    WIZCHIP_READ_BUF_DATA(addrsel, wizdata, len);    
+
+    #ifdef USE_READ_DMA
+    WIZCHIP_READ_BUF_DMA(addrsel, wizdata, len);    
     #else
     WIZCHIP_READ_BUF(addrsel, wizdata, len);
     #endif
+
     ptr += len;
 
     setSn_RX_RD(sn, ptr);

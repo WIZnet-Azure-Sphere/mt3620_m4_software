@@ -100,17 +100,12 @@ wiz_NetInfo gWIZNETINFO = { {0x00, 0x08, 0xdc, 0xff, 0xfa, 0xfb},
                            {8, 8, 8, 8},
                            NETINFO_STATIC };
 
-#define USE_READ_DMA
-#ifdef USE_READ_DMA
-#if 1
-extern uint8_t s0_Buf[2048];
-extern uint8_t s1_Buf[2048];
+#define USE_READ_SYSRAM
+#ifdef USE_READ_SYSRAM
+uint8_t __attribute__((unused, section(".sysram"))) s0_Buf[2 * 1024];
+uint8_t __attribute__((unused, section(".sysram"))) s1_Buf[2 * 1024];
 uint8_t __attribute__((unused, section(".sysram"))) gDATABUF[DATA_BUF_SIZE];
 uint8_t __attribute__((unused, section(".sysram"))) gsntpDATABUF[DATA_BUF_SIZE];
-#else
-uint8_t __attribute__((unused, section(".sysram"))) s0_Buf[2*1024];
-uint8_t __attribute__((unused, section(".sysram"))) s1_Buf[2 * 1024];
-#endif
 #else
 uint8_t s0_Buf[2048];
 uint8_t s1_Buf[2048];
