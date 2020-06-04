@@ -24,16 +24,17 @@ add_executable(${PROJECT_NAME}
                ../../OS_HAL/src/os_hal_dma.c
                ../../OS_HAL/src/os_hal_gpt.c
                ../../OS_HAL/src/os_hal_spim.c
-               ioLibrary_Driver/Ethernet/W5500/W5500.c
-               ioLibrary_Driver/Ethernet/wizchip_conf.c
-               ioLibrary_Driver/Ethernet/socket.c
-               ioLibrary_Driver/Internet/DHCP/dhcp.c
-               ioLibrary_Driver/Application/loopback/loopback.c
+               ../../../WIZnet_Driver/ioLibrary_Driver/Ethernet/W5500/W5500.c
+               ../../../WIZnet_Driver/ioLibrary_Driver/Ethernet/wizchip_conf.c
+               ../../../WIZnet_Driver/ioLibrary_Driver/Ethernet/socket.c
+               ../../../WIZnet_Driver/ioLibrary_Driver/Internet/DHCP/dhcp.c
+               ../../../WIZnet_Driver/ioLibrary_Driver/Application/loopback/loopback.c
                )
 
 # Include Folders
 target_include_directories(${PROJECT_NAME} PUBLIC
                            ../../OS_HAL/inc
+                           ../../../WIZnet_Driver
                            ./)
 
 # Libraries
