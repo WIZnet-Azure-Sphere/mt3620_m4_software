@@ -172,16 +172,18 @@ void InitPrivateNetInfo(void) {
 static void TimerHandlerDHCPS(void* cb_data)
 {
     dhcps_tick_1sec++;
+    #ifndef TEST_AX1
+    timestamp++;
+    #endif
 #if 0
     printf("dhcps_tick_1sec = %d\r\n", dhcps_tick_1sec);
 #endif
+    check_leased_time_over();
 }
 #endif
 
 _Noreturn void RTCoreMain(void)
 {
-    u32 i = 0;
-    
     /* Init Vector Table */
     NVIC_SetupVectorTable();
 
@@ -230,18 +232,9 @@ _Noreturn void RTCoreMain(void)
 #ifndef TEST_AX1
         SNTPs_run();
 #endif
-
         loopback_tcps(0, s0_Buf, 50000);
         loopback_tcps(1, s1_Buf, 50001);
 
-#ifndef TEST_AX1
-        i++;
-        if(i > 10000)
-        {
-          timestamp++;
-          i = 0;
-        }
-#endif
     }
 }
 

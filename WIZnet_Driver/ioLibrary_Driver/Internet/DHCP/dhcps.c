@@ -93,6 +93,148 @@ ntohl(uint32_t n)
   return htonl(n);
 }
 
+#if 1
+// 20200605
+static uint8_t ismarked_ip_in_table(uint8_t d)
+{
+//#define DEBUG_ISMARKED_IP_IN_TABLE
+  
+	if(d != 0)
+	{
+		#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+		printf("marked? ip .%d\r\n", d);
+		#endif
+
+		if (0 < d && d <= 32)
+		{
+			#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+			printf("\r\n ip_table.ip_range[0] = 0x%x\r\n",ip_table.ip_range[0]);
+			#endif  
+
+			if(1<<(d-1) & ip_table.ip_range[0])
+			{
+				#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+				printf("\r\n ip .%d marked ip_table.ip_range[0] = 0x%x\r\n",d, ip_table.ip_range[0]);
+				#endif
+
+				return 1;
+			}
+			return 0;
+		}
+		else if (32 < d && d <= 64)
+		{
+			#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+			printf("\r\n ip_table.ip_range[1] = 0x%x\r\n",ip_table.ip_range[1]);
+			#endif  
+
+			if(1<<(d-1-32) & ip_table.ip_range[1])
+			{
+				#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+				printf("\r\n ip .%d marked ip_table.ip_range[1] = 0x%x\r\n",d, ip_table.ip_range[1]);
+				#endif
+
+				return 1;
+			}
+			return 0;
+		}
+		else if (64 < d && d <= 96)
+		{
+			#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+			printf("\r\n ip_table.ip_range[2] = 0x%x\r\n",ip_table.ip_range[2]);
+			#endif  
+
+			if(1<<(d-1-64) & ip_table.ip_range[2])
+			{
+				#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+				printf("\r\n ip .%d marked ip_table.ip_range[2] = 0x%x\r\n",d, ip_table.ip_range[2]);
+				#endif
+
+				return 1;
+			}
+			return 0;
+		}
+		else if (96 < d && d <= 128)
+		{
+			#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+			printf("\r\n ip_table.ip_range[3] = 0x%x\r\n",ip_table.ip_range[3]);
+			#endif  
+
+			if(1<<(d-1-96) & ip_table.ip_range[3])
+			{
+				#ifdef DEBUG_ISMARKED_IP_IN_TABLE
+				printf("\r\n ip .%d marked ip_table.ip_range[3] = 0x%x\r\n",d, ip_table.ip_range[3]);
+				#endif
+
+				return 1;
+			}
+			return 0;
+		}
+	}
+	return 0;
+}
+#endif
+
+#if 1
+// 20200605
+static void unmark_ip_in_table(uint8_t d)
+{
+//#define DEBUG_UNMARK_IP_IN_TABLE
+  if(d != 0)
+  {
+    #ifdef DEBUG_UNMARK_IP_IN_TABLE
+    printf("unmark ip .%d\r\n", d);
+    #endif
+    if (0 < d && d <= 32)
+    {
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[0] = 0x%x\r\n",ip_table.ip_range[0]);
+      #endif  
+
+		  ip_table.ip_range[0] = UNMARK_RANGE1_IP_BIT(ip_table, d);	
+      
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[0] = 0x%x\r\n",ip_table.ip_range[0]);
+      #endif	
+  	}
+    else if (32 < d && d <= 64)
+    {
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[1] = 0x%x\r\n",ip_table.ip_range[1]);
+      #endif	
+      
+    	ip_table.ip_range[1] = UNMARK_RANGE2_IP_BIT(ip_table, (d - 32));
+      
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[1] = 0x%x\r\n",ip_table.ip_range[1]);
+      #endif	
+  	}
+    else if (64 < d && d <= 96)
+    {
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[2] = 0x%x\r\n",ip_table.ip_range[2]);
+      #endif	
+      
+  		ip_table.ip_range[2] = UNMARK_RANGE3_IP_BIT(ip_table, (d - 64));
+      
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[2] = 0x%x\r\n",ip_table.ip_range[2]);
+      #endif	
+  	}
+    else if (96 < d && d <= 128)
+    {
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[3] = 0x%x\r\n",ip_table.ip_range[3]);
+      #endif	
+      
+  		ip_table.ip_range[3] = UNMARK_RANGE4_IP_BIT(ip_table, (d - 96));
+      
+      #ifdef DEBUG_UNMARK_IP_IN_TABLE
+  		printf("\r\n ip_table.ip_range[3] = 0x%x\r\n",ip_table.ip_range[3]);
+      #endif	
+  	}
+  }
+}
+#else
 static void unmark_ip_in_table()
 {
 //#define DEBUG_UNMARK_IP_IN_TABLE
@@ -153,7 +295,69 @@ static void unmark_ip_in_table()
   	}
   }
 }
+#endif
 
+#if 1
+// 20200605
+static void mark_ip_in_table(uint8_t d)
+{
+	#if (debug_dhcps)   
+	printf("\r\n mark ip .%d\r\n",d);
+	#endif	
+
+	if(1 == ismarked_ip_in_table(d))
+	{
+		//#if (debug_dhcps)   
+		#if 1
+		printf("\r\n already mark ip .%d\r\n",d);
+		#endif
+	}
+	else
+	{
+		if (0 < d && d <= 32) {
+			ip_table.ip_range[0] = MARK_RANGE1_IP_BIT(ip_table, d);	
+			#if (debug_dhcps)		
+			printf("\r\n ip_table.ip_range[0] = 0x%x\r\n",ip_table.ip_range[0]);
+			#endif	
+		} else if (32 < d && d <= 64) {
+			ip_table.ip_range[1] = MARK_RANGE2_IP_BIT(ip_table, (d - 32));
+			#if (debug_dhcps)	
+			printf("\r\n ip_table.ip_range[1] = 0x%x\r\n",ip_table.ip_range[1]);
+			#endif	
+		} else if (64 < d && d <= 96) {
+			ip_table.ip_range[2] = MARK_RANGE3_IP_BIT(ip_table, (d - 64));
+			#if (debug_dhcps)	
+			printf("\r\n ip_table.ip_range[2] = 0x%x\r\n",ip_table.ip_range[2]);
+			#endif	
+		} else if (96 < d && d <= 128) {
+			ip_table.ip_range[3] = MARK_RANGE4_IP_BIT(ip_table, (d - 96));
+			#if (debug_dhcps)	
+			printf("\r\n ip_table.ip_range[3] = 0x%x\r\n",ip_table.ip_range[3]);
+			#endif	
+		} else {
+			printf("\r\n Request ip over the range(1-128) \r\n");
+		}
+	}
+	
+	memcpy(ip_table.chaddr[d], dhcp_client_ethernet_address, sizeof(ip_table.chaddr[d]));
+
+	#if (debug_dhcps)
+	printf("\r\nMark %d.%d.%d.%d\r\n", ip4_addr1(&dhcps_local_address), ip4_addr2(&dhcps_local_address), ip4_addr3(&dhcps_local_address), ip4_addr4(&dhcps_local_address));
+	for(int i=0; i<16; i++)
+	{
+		printf("%x:", ip_table.chaddr[d][i]);
+	}
+	printf("\r\n");
+	#endif
+
+	memcpy(ip_table.cltime[d-1], (uint8_t*)&dhcps_tick_1sec, sizeof(ip_table.cltime[d-1]));
+	//#if (debug_dhcps)
+	#if 1
+	printf("ip .%d Mark lease time : ", d);
+	printf("%#x\r\n", dhcps_tick_1sec);
+	#endif
+}
+#else
 static void mark_ip_in_table(uint8_t d)
 {
 #if (debug_dhcps)   
@@ -194,6 +398,7 @@ static void mark_ip_in_table(uint8_t d)
   printf("\r\n");
 #endif
 }
+#endif
 
 void dhcps_set_addr_pool(int addr_pool_set, ip_addr * addr_pool_start, ip_addr *addr_pool_end)
 {
@@ -286,6 +491,7 @@ void dhcps_init(uint8_t s, uint8_t * buf)
 #if 1
 // 20200608
 	dhcps_tick_1sec = 0;
+	dhcps_option_lease_time = (dhcp_option_lease_time_one_day[0]<<24 | dhcp_option_lease_time_one_day[1]<<16 | dhcp_option_lease_time_one_day[2]<<8 | dhcp_option_lease_time_one_day[3]);
 #endif
 
 }
@@ -660,15 +866,36 @@ static void dhcps_send_offer()
 		}
 	}
 
-  // Search MAC Address in a table
-  search_ip = search_mac();
-  if(search_ip != 0 && temp_ip == 0)
-  {
-    temp_ip = search_ip;
-  }
-
-	/* create new client ip */
-	if(temp_ip == 0) temp_ip = search_next_ip();
+	if (temp_ip == 0)
+	{
+		// The client Requested IP is 0.
+		// Search MAC Address in a table
+		search_ip = search_mac();
+		if (search_ip != 0)
+		{
+			// This MAC Address has been marked.
+			// So, it will offer the same IP which it marked before.
+			temp_ip = search_ip;
+		}
+		else
+		{
+			// create new client ip.
+			temp_ip = search_next_ip();
+		}
+	}
+#if 0
+	if (1 == ismarked_ip_in_table(temp_ip))
+	{
+		// The client Requested IP is already marked.
+//#if (debug_dhcps)
+#if 1
+		printf("\r\n temp_ip = %d is already marked\r\n", temp_ip);
+#endif
+		dhcps_send_decline();
+		dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
+		return 0;
+	}
+#endif
 
   #if (debug_dhcps)
 	printf("\r\n temp_ip = %d\r\n",temp_ip);
@@ -722,6 +949,45 @@ static void dhcps_send_ack()
   sock_sendto(DHCPs_SOCKET, (uint8_t *)dhcp_message_repository, sizeof(dhcps_msg), (uint8_t *)&dhcps_send_broadcast_address.addr, DHCP_CLIENT_PORT);
 }
 
+#if 1
+// 20200608
+void check_leased_time_over()
+{
+	// 20200605
+	#if 1
+	// 20200605
+	uint8_t i, j;
+	uint8_t mark_ip;
+	uint32_t mark_time;
+	uint32_t leased_time;
+	#endif
+
+	for(i=0; i<4; i++)
+	{
+		for(j=0; j<32; j++)
+		{
+			if(1<<j & ip_table.ip_range[i])
+			{
+				mark_ip = i*32 + (j+1);
+
+				if(mark_ip != 1)
+				{
+					memcpy((uint8_t*)&mark_time, ip_table.cltime[mark_ip-1], sizeof(ip_table.cltime[mark_ip-1]));
+					leased_time = dhcps_tick_1sec - mark_time;
+
+					if(leased_time >= dhcps_option_lease_time)
+					{
+						printf("ip .%d leased time over %#x(%d) / %#x(%d)\r\n", mark_ip, leased_time, leased_time, dhcps_option_lease_time, dhcps_option_lease_time);
+						unmark_ip_in_table(mark_ip);
+						printf("unmarked\r\n");
+					}
+				}
+			}
+		}
+	}
+}
+#endif
+
 uint8_t dhcps_run(void)
 {
 	uint8_t client_addr[6];
@@ -744,6 +1010,40 @@ uint8_t dhcps_run(void)
   }
   else
   {
+	#if 0
+	// 20200605
+	#if 1
+	// 20200605
+	uint8_t i, j;
+	uint8_t mark_ip;
+	uint32_t mark_time;
+	uint32_t leased_time;
+	#endif
+
+	for(i=0; i<4; i++)
+	{
+		for(j=0; j<32; j++)
+		{
+			if(1<<j & ip_table.ip_range[i])
+			{
+				mark_ip = i*32 + (j+1);
+
+				if(mark_ip != 1)
+				{
+					memcpy((uint8_t*)&mark_time, ip_table.cltime[mark_ip-1], sizeof(ip_table.cltime[mark_ip-1]));
+					leased_time = dhcps_tick_1sec - mark_time;
+
+					if(leased_time >= dhcps_option_lease_time)
+					{
+						printf("ip .%d leased time over %#x(%d) / %#x(%d)\r\n", mark_ip, leased_time, leased_time, dhcps_option_lease_time, dhcps_option_lease_time);
+						// unmark_ip_in_table(mark_ip);
+						printf("unmarked\r\n");
+					}
+				}
+			}
+		}
+	}
+	#endif
     return 0;
   }
 
@@ -752,11 +1052,11 @@ uint8_t dhcps_run(void)
     switch (dhcps_check_msg_and_handle_options(len))
     {
   		case  DHCP_SERVER_STATE_OFFER:
-        printf("DHCP_SERVER_STATE_OFFER\r\n");
+			printf("DHCP_SERVER_STATE_OFFER\r\n");
   			dhcps_send_offer();
   			break;
   		case DHCP_SERVER_STATE_ACK:
-        printf("DHCP_SERVER_STATE_ACK\r\n");
+			printf("DHCP_SERVER_STATE_ACK\r\n");
   			dhcps_send_ack();
 #if (!IS_USE_FIXED_IP)
   			mark_ip_in_table((uint8_t)ip4_addr4(&dhcps_allocated_client_address)); 			
@@ -764,16 +1064,21 @@ uint8_t dhcps_run(void)
   			dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
   			break;
   		case DHCP_SERVER_STATE_NAK:
-        printf("DHCP_SERVER_STATE_NAK\r\n");
+			printf("DHCP_SERVER_STATE_NAK\r\n");
   			dhcps_send_nak();
   			dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
   			break;
   		case DHCP_OPTION_CODE_END:
-        printf("DHCP_OPTION_CODE_END\r\n");
+			printf("DHCP_OPTION_CODE_END\r\n");
   			break;
-      case DHCP_SERVER_STATE_RELEASE:
-        unmark_ip_in_table();
-        dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
+		case DHCP_SERVER_STATE_RELEASE:
+	  		#if 1
+			// 20200605
+			unmark_ip_in_table(search_mac());
+	  		#else
+			unmark_ip_in_table();
+			#endif
+			dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
         break;
 		}
   }

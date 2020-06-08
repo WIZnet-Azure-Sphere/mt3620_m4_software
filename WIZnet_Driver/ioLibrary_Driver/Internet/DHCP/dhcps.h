@@ -96,7 +96,8 @@ typedef struct dhcps_msg_t
 
 /* use this to check whether the message is dhcp related or not */
 static const uint8_t dhcp_magic_cookie[4] = {99, 130, 83, 99};
-#if 1
+#if 0
+// For Test
 // 1 minutes
 static const uint8_t dhcp_option_lease_time_one_day[] = {0x00, 0x00, 0x00, 0x3C}; 
 #else
@@ -108,6 +109,10 @@ static const uint8_t dhcp_option_interface_mtu_576[] = {0x02, 0x40};
 struct table {
 	uint32_t ip_range[4];
   uint8_t chaddr[128][16];	/* Client hardware address */
+#if 1
+	// 20200605
+  uint8_t cltime[128][4];	/* Client leased time */
+#endif
 };
 
 struct address_pool{
