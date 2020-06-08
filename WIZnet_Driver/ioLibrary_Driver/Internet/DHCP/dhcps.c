@@ -54,6 +54,12 @@ uint32_t DHCPs_XID;      // Any number
 //dhcps_msg* pDHCPsMSG;      // Buffer pointer for DHCP processing
 int8_t   dhcps_state        = 0;   // DHCP state
 
+#if 1
+// 20200604 timer0
+uint32_t dhcps_tick_1sec;
+uint32_t dhcps_option_lease_time;
+#endif
+
 #define IP4_ADDR(ipaddr, a,b,c,d) \
         (ipaddr)->addr = htonl(((uint32_t)((a) & 0xff) << 24) | \
                                ((uint32_t)((b) & 0xff) << 16) | \

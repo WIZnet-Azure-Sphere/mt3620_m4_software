@@ -56,6 +56,12 @@
 /******************************************************************************/
 /* UART */
 static const uint8_t uart_port_num = OS_HAL_UART_PORT0;
+#if 1
+// 20200604 timer0
+static const uint8_t gpt_timer_dhcps = OS_HAL_GPT0;
+static const uint32_t gpt_timer_dhcps_perios_ms = 1000;
+extern uint32_t dhcps_tick_1sec;
+#endif
 
 uint8_t spi_master_port_num = OS_HAL_SPIM_ISU1;
 uint32_t spi_master_speed = 2*10*1000; /* KHz */
@@ -161,6 +167,17 @@ void InitPrivateNetInfo(void) {
     printf("Socket 0-7 Closed \r\n");
 }
 
+#if 1
+// 20200604 timer0
+static void TimerHandlerDHCPS(void* cb_data)
+{
+    dhcps_tick_1sec++;
+#if 1
+    printf("dhcps_tick_1sec = %d\r\n", dhcps_tick_1sec);
+#endif
+}
+#endif
+
 _Noreturn void RTCoreMain(void)
 {
     u32 i = 0;
@@ -186,11 +203,24 @@ _Noreturn void RTCoreMain(void)
     SNTPs_init(3, gsntpDATABUF);
 #endif
 
-#if 1
+#if 0
     printf("s0_Buf = %#x\r\n", s0_Buf);
     printf("s1_Buf = %#x\r\n", s1_Buf);
     printf("gDATABUF = %#x\r\n", gDATABUF);
     printf("gsntpDATABUF = %#x\r\n", gsntpDATABUF);
+#endif
+
+#if 1
+    // 20200604 timer0
+    struct os_gpt_int gpt_timer_dhcps_int;
+    mtk_os_hal_gpt_init();
+
+    gpt_timer_dhcps_int.gpt_cb_hdl = TimerHandlerDHCPS;
+    gpt_timer_dhcps_int.gpt_cb_data = NULL;
+
+    mtk_os_hal_gpt_config(gpt_timer_dhcps, false, &gpt_timer_dhcps_int);
+    mtk_os_hal_gpt_reset_timer(gpt_timer_dhcps, gpt_timer_dhcps_perios_ms, true);
+    mtk_os_hal_gpt_start(gpt_timer_dhcps);
 #endif
 
     while (1)
