@@ -283,6 +283,11 @@ void dhcps_init(uint8_t s, uint8_t * buf)
 #endif	
 #endif
 
+#if 1
+// 20200608
+	dhcps_tick_1sec = 0;
+#endif
+
 }
 
 uint8_t dhcps_handle_state_machine_change(uint8_t option_message_type)

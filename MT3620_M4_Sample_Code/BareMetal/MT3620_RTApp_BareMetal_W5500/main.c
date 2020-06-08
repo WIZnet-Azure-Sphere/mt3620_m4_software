@@ -172,7 +172,7 @@ void InitPrivateNetInfo(void) {
 static void TimerHandlerDHCPS(void* cb_data)
 {
     dhcps_tick_1sec++;
-#if 1
+#if 0
     printf("dhcps_tick_1sec = %d\r\n", dhcps_tick_1sec);
 #endif
 }
@@ -197,7 +197,7 @@ _Noreturn void RTCoreMain(void)
     printf("App built on: " __DATE__ " " __TIME__ "\r\n");
 
     InitPrivateNetInfo();
-#define TEST_AX1
+//#define TEST_AX1
     dhcps_init(2, gDATABUF);
 #ifndef TEST_AX1
     SNTPs_init(3, gsntpDATABUF);
