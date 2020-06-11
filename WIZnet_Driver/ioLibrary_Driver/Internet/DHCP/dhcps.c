@@ -23,6 +23,10 @@ static ip_addr dhcps_local_gateway;
 static ip_addr dhcps_network_id;
 static ip_addr dhcps_subnet_broadcast; 
 static ip_addr dhcps_allocated_client_address;
+#if 1
+// 20200611
+static ip_addr dhcps_renewal_client_address;
+#endif
 static int dhcps_addr_pool_set = 0;
 static ip_addr dhcps_addr_pool_start;
 static ip_addr dhcps_addr_pool_end;
@@ -301,14 +305,14 @@ static void unmark_ip_in_table()
 // 20200605
 static void mark_ip_in_table(uint8_t d)
 {
-	#if (debug_dhcps)   
+//	#if (debug_dhcps)   
+  #if 1
 	printf("\r\n mark ip .%d\r\n",d);
 	#endif	
 
 	if(1 == ismarked_ip_in_table(d))
 	{
-		//#if (debug_dhcps)   
-		#if 1
+		#if (debug_dhcps)   
 		printf("\r\n already mark ip .%d\r\n",d);
 		#endif
 	}
@@ -338,21 +342,25 @@ static void mark_ip_in_table(uint8_t d)
 			printf("\r\n Request ip over the range(1-128) \r\n");
 		}
 	}
-	
+
+  #if 1
+  // 20200611
+  memcpy(ip_table.chaddr[d-1], dhcp_client_ethernet_address, sizeof(ip_table.chaddr[d-1]));
+  #else
 	memcpy(ip_table.chaddr[d], dhcp_client_ethernet_address, sizeof(ip_table.chaddr[d]));
+  #endif
 
 	#if (debug_dhcps)
 	printf("\r\nMark %d.%d.%d.%d\r\n", ip4_addr1(&dhcps_local_address), ip4_addr2(&dhcps_local_address), ip4_addr3(&dhcps_local_address), ip4_addr4(&dhcps_local_address));
 	for(int i=0; i<16; i++)
 	{
-		printf("%x:", ip_table.chaddr[d][i]);
+		printf("%x:", ip_table.chaddr[d-1][i]);
 	}
 	printf("\r\n");
 	#endif
 
 	memcpy(ip_table.cltime[d-1], (uint8_t*)&dhcps_tick_1sec, sizeof(ip_table.cltime[d-1]));
-	//#if (debug_dhcps)
-	#if 1
+	#if (debug_dhcps)
 	printf("ip .%d Mark lease time : ", d);
 	printf("%#x\r\n", dhcps_tick_1sec);
 	#endif
@@ -498,6 +506,8 @@ void dhcps_init(uint8_t s, uint8_t * buf)
 
 uint8_t dhcps_handle_state_machine_change(uint8_t option_message_type)
 {
+//#define DEBUG_DHCPS_HANDLE_STATE_MACHINE_CHANGE
+
 	switch (option_message_type) {
 	case DHCP_MESSAGE_TYPE_DECLINE:
 		dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
@@ -521,6 +531,71 @@ uint8_t dhcps_handle_state_machine_change(uint8_t option_message_type)
 			  	dhcp_server_state_machine = DHCP_SERVER_STATE_NAK;
 			}
 		} else if (dhcp_server_state_machine == DHCP_SERVER_STATE_IDLE) {
+		#if 1
+      #ifdef DEBUG_DHCPS_HANDLE_STATE_MACHINE_CHANGE
+      printf("%d RENEWAL\r\n", __LINE__);
+      #endif
+
+      #ifdef DEBUG_DHCPS_HANDLE_STATE_MACHINE_CHANGE
+      // Client IP Address
+      printf("Client IP %d.%d.%d.%d\r\n",
+        dhcp_message_repository->ciaddr[0], dhcp_message_repository->ciaddr[1],
+        dhcp_message_repository->ciaddr[2], dhcp_message_repository->ciaddr[3]
+        );
+      printf("Client Hardware %#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x:%#x\r\n",
+        dhcp_message_repository->chaddr[0], dhcp_message_repository->chaddr[1],
+        dhcp_message_repository->chaddr[2], dhcp_message_repository->chaddr[3],
+        dhcp_message_repository->chaddr[4], dhcp_message_repository->chaddr[5],
+        dhcp_message_repository->chaddr[6], dhcp_message_repository->chaddr[7],
+        dhcp_message_repository->chaddr[8], dhcp_message_repository->chaddr[9],
+        dhcp_message_repository->chaddr[10], dhcp_message_repository->chaddr[11],
+        dhcp_message_repository->chaddr[12], dhcp_message_repository->chaddr[13],
+        dhcp_message_repository->chaddr[14], dhcp_message_repository->chaddr[15]
+        );
+      #endif
+
+      // if client ip = 0.0.0.0
+      if(dhcp_message_repository->ciaddr[0] == 0 && dhcp_message_repository->ciaddr[1] == 0 &&
+        dhcp_message_repository->ciaddr[2] == 0 && dhcp_message_repository->ciaddr[3] == 0
+        )
+      {
+        #ifdef DEBUG_DHCPS_HANDLE_STATE_MACHINE_CHANGE
+        printf("Client IP address is 0\r\n");
+        printf("Requested IP address is %d\r\n", ip4_addr4(&client_request_ip));
+        #endif
+          
+        if(ip4_addr1(&client_request_ip) == 0 && ip4_addr2(&client_request_ip) == 0 && 
+          ip4_addr3(&client_request_ip) == 0 && ip4_addr4(&client_request_ip) == 0
+          )
+        {
+          dhcp_server_state_machine = DHCP_SERVER_STATE_NAK;
+          break;
+        }
+        else
+        {
+          IP4_ADDR(&dhcps_renewal_client_address, ip4_addr1(&client_request_ip),
+          ip4_addr2(&client_request_ip), ip4_addr3(&client_request_ip), ip4_addr4(&client_request_ip));
+        }
+      }
+      else
+      {
+        IP4_ADDR(&dhcps_renewal_client_address, dhcp_message_repository->ciaddr[0],
+          dhcp_message_repository->ciaddr[1], dhcp_message_repository->ciaddr[2], dhcp_message_repository->ciaddr[3]);
+      }
+
+      if(0 == ismarked_ip_in_table(ip4_addr4(&dhcps_renewal_client_address)))
+      {
+        #ifdef DEBUG_DHCPS_HANDLE_STATE_MACHINE_CHANGE
+        printf("Not in a pool\r\n");
+        #endif
+        dhcp_server_state_machine = DHCP_SERVER_STATE_NAK;
+        break;
+      }
+      #ifdef DEBUG_DHCPS_HANDLE_STATE_MACHINE_CHANGE
+      printf("In a pool\r\n");
+      #endif
+      dhcp_server_state_machine = DHCP_SERVER_STATE_RENEWAL;
+    #else
 			if ((ip4_addr4(&dhcps_allocated_client_address) != 0) &&
 				(memcmp((void *)&dhcps_allocated_client_address, (void *)&client_request_ip, 4) == 0) &&
 				(memcmp((void *)&bound_client_ethernet_address, (void *)&dhcp_client_ethernet_address, 16) == 0)) {
@@ -541,6 +616,7 @@ uint8_t dhcps_handle_state_machine_change(uint8_t option_message_type)
 			} else {
 				dhcp_server_state_machine = DHCP_SERVER_STATE_NAK;
 			}
+    #endif
 		} else {
 			dhcp_server_state_machine = DHCP_SERVER_STATE_NAK;
 		}
@@ -657,7 +733,12 @@ static uint8_t search_mac()
       #ifdef DEBUG_SEARCH_MAC
       printf("Matched %d\r\n", i);
       #endif
+      #if 1
+      // 20200611
+      return i+1;
+      #else
       return i;
+      #endif
     }
   }
 
@@ -897,8 +978,9 @@ static void dhcps_send_offer()
 	}
 #endif
 
-  #if (debug_dhcps)
-	printf("\r\n temp_ip = %d\r\n",temp_ip);
+//  #if (debug_dhcps)
+  #if 1
+	printf("\r\n Offer .%d\r\n", temp_ip);
   #endif
 
 	if (temp_ip == 0) {
@@ -935,6 +1017,20 @@ static void dhcps_send_nak()
 
   sock_sendto(DHCPs_SOCKET, (uint8_t *)dhcp_message_repository, sizeof(dhcps_msg), (uint8_t *)&dhcps_send_broadcast_address.addr, DHCP_CLIENT_PORT);
 }
+
+/**
+  * @brief  init and fill in  the needed content of dhcp ack message.  
+  * @param  packet buffer packet buffer for UDP.
+  * @retval None.
+  */
+static void dhcps_send_reneal_ack()
+{
+  dhcps_initialize_message(dhcp_message_repository, dhcps_renewal_client_address);
+  add_offer_options(add_msg_type(&dhcp_message_repository->options[4], DHCP_MESSAGE_TYPE_ACK));
+  
+  sock_sendto(DHCPs_SOCKET, (uint8_t *)dhcp_message_repository, sizeof(dhcps_msg), (uint8_t *)&dhcps_send_broadcast_address.addr, DHCP_CLIENT_PORT);
+}
+
 
 /**
   * @brief  init and fill in  the needed content of dhcp ack message.  
@@ -1006,6 +1102,7 @@ uint8_t dhcps_run(void)
   if((len = getSn_RX_RSR(DHCPs_SOCKET)) > 0)
   {
     len = sock_recvfrom(DHCPs_SOCKET, (uint8_t *)dhcp_message_repository, len, client_addr, &client_port);
+    printf("=========================================\r\n");
     printf("DHCP message : %d.%d.%d.%d(%d) %d received. \r\n", client_addr[0], client_addr[1], client_addr[2], client_addr[3], client_port, len);
   }
   else
@@ -1049,6 +1146,36 @@ uint8_t dhcps_run(void)
 
   if(client_port == DHCP_CLIENT_PORT)
   {
+#if 1
+    // Reply type
+    #if (debug_dhcps)
+    printf("dhcp_message_repository->flags = %#x\r\n", dhcp_message_repository->flags);
+    #endif
+
+    if(dhcp_message_repository->flags & 1<<7)
+    {
+      // Broadcast
+      #if (debug_dhcps)
+      printf("DHCP Server Reply to Broadcast\r\n");
+      #endif
+      //IP4_ADDR(&dhcps_send_broadcast_address, 255, 255, 255, 255);
+    }
+    else
+    {
+      // Unicast
+      #if (debug_dhcps)
+      printf("DHCP Server Reply to Unicast %d.%d.%d.%d\r\n", dhcp_message_repository->ciaddr[0], dhcp_message_repository->ciaddr[1], dhcp_message_repository->ciaddr[2], dhcp_message_repository->ciaddr[3]);
+      #endif
+	    if(dhcp_message_repository->ciaddr[0] != 0
+        && dhcp_message_repository->ciaddr[1] != 0
+        && dhcp_message_repository->ciaddr[2] != 0
+        && dhcp_message_repository->ciaddr[3] != 0
+        )
+      { 
+        memcpy(&dhcps_send_broadcast_address, &dhcp_message_repository->ciaddr, sizeof(dhcps_send_broadcast_address));
+      }
+    }        
+#endif
     switch (dhcps_check_msg_and_handle_options(len))
     {
   		case  DHCP_SERVER_STATE_OFFER:
@@ -1072,6 +1199,7 @@ uint8_t dhcps_run(void)
 			printf("DHCP_OPTION_CODE_END\r\n");
   			break;
 		case DHCP_SERVER_STATE_RELEASE:
+      printf("DHCP_SERVER_STATE_RELEASE\r\n");
 	  		#if 1
 			// 20200605
 			unmark_ip_in_table(search_mac());
@@ -1080,7 +1208,20 @@ uint8_t dhcps_run(void)
 			#endif
 			dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
         break;
+		case DHCP_SERVER_STATE_RENEWAL:
+			printf("DHCP_SERVER_STATE_RENEWAL\r\n");
+      dhcps_send_reneal_ack();
+#if (!IS_USE_FIXED_IP)
+      mark_ip_in_table((uint8_t)ip4_addr4(&dhcps_renewal_client_address));
+#endif
+      dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
+        break;
+    case DHCP_SERVER_STATE_DECLINE:
+      printf("DHCP_SERVER_STATE_DECLINE\r\n");
+        break;
 		}
+    IP4_ADDR(&dhcps_send_broadcast_address, 255, 255, 255, 255);
+    printf("=========================================\r\n\r\n");
   }
 
   return 0;

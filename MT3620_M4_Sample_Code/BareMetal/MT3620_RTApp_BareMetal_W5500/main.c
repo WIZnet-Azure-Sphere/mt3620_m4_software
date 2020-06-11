@@ -105,6 +105,10 @@ wiz_NetInfo gWIZNETINFO = { {0x00, 0x08, 0xdc, 0xff, 0xfa, 0xfb},
                            {192, 168, 50, 1},
                            {8, 8, 8, 8},
                            NETINFO_STATIC };
+#if 1
+// 20200611
+wiz_NetInfo gWIZNETINFO_temp;
+#endif
 
 #define USE_READ_SYSRAM
 #ifdef USE_READ_SYSRAM
@@ -141,13 +145,26 @@ void InitPrivateNetInfo(void) {
     uint8_t i = 0;
     ctlwizchip(CW_GET_ID, (void*)tmpstr);
 
-    if (ctlnetwork(CN_SET_NETINFO, (void*)&gWIZNETINFO) < 0) {
+    do
+    {
+      if (ctlnetwork(CN_SET_NETINFO, (void*)&gWIZNETINFO) < 0) {
         printf("ERROR: ctlnetwork SET\r\n");
-    }
+      }
 
-    memset((void*)&gWIZNETINFO, 0, sizeof(gWIZNETINFO));
+      memset((void*)&gWIZNETINFO_temp, 0, sizeof(gWIZNETINFO_temp));
 
-    ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
+      ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO_temp);
+      
+      if (1 == memcmp((void *)&gWIZNETINFO, (void *)&gWIZNETINFO_temp, sizeof(gWIZNETINFO)))
+      {
+        printf("gWIZNETINFO write/read failed\r\n");
+      }
+      else
+      {
+        break;
+      }
+      
+    }while(1);
 
     printf("\r\n=== %s NET CONF ===\r\n", (char*)tmpstr);
     printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\r\n", gWIZNETINFO.mac[0], gWIZNETINFO.mac[1], gWIZNETINFO.mac[2],

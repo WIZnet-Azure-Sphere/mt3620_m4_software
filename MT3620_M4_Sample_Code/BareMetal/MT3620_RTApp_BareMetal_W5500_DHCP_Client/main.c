@@ -142,9 +142,13 @@ void InitPrivateNetInfo(void) {
         printf("ERROR: ctlnetwork SET\r\n");
     }
 
-    memset((void*)&gWIZNETINFO, 0, sizeof(gWIZNETINFO));
+    memset((void*)&gWIZNETINFO_temp, 0, sizeof(gWIZNETINFO_temp));
 
-    ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
+    ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO_temp);
+
+    memcmp((void *)&gWIZNETINFO, (void *)&gWIZNETINFO_temp, sizeof(gWIZNETINFO))
+
+    if(memcmp())
 
     printf("\r\n=== %s NET CONF ===\r\n", (char*)tmpstr);
     printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\r\n", gWIZNETINFO.mac[0], gWIZNETINFO.mac[1], gWIZNETINFO.mac[2],

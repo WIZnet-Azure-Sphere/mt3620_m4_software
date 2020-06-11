@@ -17,6 +17,8 @@
 #define DHCP_SERVER_STATE_NAK 				(4)
 #define DHCP_SERVER_STATE_IDLE 				(5)
 #define DHCP_SERVER_STATE_RELEASE 		(6)
+#define DHCP_SERVER_STATE_RENEWAL 		(7)
+
 
 
 
@@ -96,10 +98,15 @@ typedef struct dhcps_msg_t
 
 /* use this to check whether the message is dhcp related or not */
 static const uint8_t dhcp_magic_cookie[4] = {99, 130, 83, 99};
-#if 0
+#if 1
 // For Test
+#if 1
+// 30 seconds
+static const uint8_t dhcp_option_lease_time_one_day[] = {0x00, 0x00, 0x00, 0x0A}; 
+#else
 // 1 minutes
 static const uint8_t dhcp_option_lease_time_one_day[] = {0x00, 0x00, 0x00, 0x3C}; 
+#endif
 #else
 // 24 hours
 static const uint8_t dhcp_option_lease_time_one_day[] = {0x00, 0x01, 0x51, 0x80}; 
