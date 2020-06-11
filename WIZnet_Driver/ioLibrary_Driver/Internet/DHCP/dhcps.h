@@ -98,9 +98,9 @@ typedef struct dhcps_msg_t
 
 /* use this to check whether the message is dhcp related or not */
 static const uint8_t dhcp_magic_cookie[4] = {99, 130, 83, 99};
-#if 1
+#if 0
 // For Test
-#if 1
+#if 0
 // 30 seconds
 static const uint8_t dhcp_option_lease_time_one_day[] = {0x00, 0x00, 0x00, 0x0A}; 
 #else

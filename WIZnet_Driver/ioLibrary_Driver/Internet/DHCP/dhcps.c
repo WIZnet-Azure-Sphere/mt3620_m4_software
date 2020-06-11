@@ -302,11 +302,23 @@ static void unmark_ip_in_table()
 #endif
 
 #if 1
+// 20200611
+static void mark_conflict_in_table(uint8_t d)
+{
+  #if (debug_dhcps)   
+    printf("\r\n mark conflict ip .%d\r\n",d);
+  #endif
+
+  memset(ip_table.chaddr[d-1], 0, sizeof(ip_table.chaddr[d-1]));
+}
+
+#endif
+
+#if 1
 // 20200605
 static void mark_ip_in_table(uint8_t d)
 {
-//	#if (debug_dhcps)   
-  #if 1
+  #if (debug_dhcps)   
 	printf("\r\n mark ip .%d\r\n",d);
 	#endif	
 
@@ -510,7 +522,16 @@ uint8_t dhcps_handle_state_machine_change(uint8_t option_message_type)
 
 	switch (option_message_type) {
 	case DHCP_MESSAGE_TYPE_DECLINE:
+		#if 1
+		// 20200611
+		#ifdef DEBUG_DHCPS_HANDLE_STATE_MACHINE_CHANGE
+		printf("DECLINE IP address is %d\r\n", ip4_addr4(&client_request_ip));
+		#endif
+		mark_conflict_in_table(ip4_addr4(&client_request_ip));
+		dhcp_server_state_machine = DHCP_SERVER_STATE_DECLINE;
+		#else
 		dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
+		#endif
 		break;
 	case DHCP_MESSAGE_TYPE_DISCOVER:
 		if (dhcp_server_state_machine == DHCP_SERVER_STATE_IDLE) {
@@ -921,6 +942,7 @@ static void dhcps_initialize_message(dhcps_msg *dhcp_message_repository, ip_addr
   	sizeof(dhcp_magic_cookie));
 }
 
+static void dhcps_send_nak();
 
 /**
   * @brief  init and fill in  the needed content of dhcp offer message.  
@@ -964,22 +986,32 @@ static void dhcps_send_offer()
 			temp_ip = search_next_ip();
 		}
 	}
-#if 0
-	if (1 == ismarked_ip_in_table(temp_ip))
-	{
-		// The client Requested IP is already marked.
-//#if (debug_dhcps)
-#if 1
-		printf("\r\n temp_ip = %d is already marked\r\n", temp_ip);
-#endif
-		dhcps_send_decline();
-		dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
-		return 0;
-	}
-#endif
-
-//  #if (debug_dhcps)
-  #if 1
+  else
+  {
+    if(1 == ismarked_ip_in_table(temp_ip))
+    {
+      // conflict ?
+      if(ip_table.chaddr[temp_ip-1][0] == 0 && ip_table.chaddr[temp_ip-1][1] == 0 &&
+        ip_table.chaddr[temp_ip-1][2] == 0 && ip_table.chaddr[temp_ip-1][3] == 0 &&
+        ip_table.chaddr[temp_ip-1][4] == 0 && ip_table.chaddr[temp_ip-1][5] == 0 &&
+        ip_table.chaddr[temp_ip-1][6] == 0 && ip_table.chaddr[temp_ip-1][7] == 0 &&
+        ip_table.chaddr[temp_ip-1][8] == 0 && ip_table.chaddr[temp_ip-1][9] == 0 &&
+        ip_table.chaddr[temp_ip-1][10] == 0 && ip_table.chaddr[temp_ip-1][11] == 0 &&
+        ip_table.chaddr[temp_ip-1][12] == 0 && ip_table.chaddr[temp_ip-1][13] == 0 &&
+        ip_table.chaddr[temp_ip-1][14] == 0 && ip_table.chaddr[temp_ip-1][15] == 0)
+      {
+        #if (debug_dhcps)
+        printf("%d conflict temp_ip .%d\r\n", __LINE__, temp_ip);
+        #endif
+        temp_ip = search_next_ip();
+        #if (debug_dhcps)
+        printf("%d new temp_ip .%d\r\n", __LINE__, temp_ip);
+        #endif
+      }
+    }
+  }
+  
+  #if (debug_dhcps)
 	printf("\r\n Offer .%d\r\n", temp_ip);
   #endif
 
@@ -990,6 +1022,10 @@ static void dhcps_send_offer()
 		printf("\r\n reset ip table!!\r\n");	
 #endif	
 		printf("\r\n No useable ip!!!!\r\n");
+    #if 1
+    dhcps_send_nak();
+    return;
+    #endif
 	}
 	
 	IP4_ADDR(&dhcps_allocated_client_address, (ip4_addr1(&dhcps_network_id)),
@@ -1218,6 +1254,7 @@ uint8_t dhcps_run(void)
         break;
     case DHCP_SERVER_STATE_DECLINE:
       printf("DHCP_SERVER_STATE_DECLINE\r\n");
+      dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
         break;
 		}
     IP4_ADDR(&dhcps_send_broadcast_address, 255, 255, 255, 255);
